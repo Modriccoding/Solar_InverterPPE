@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>SOLAR GRID CONTROL CENTER</title>
+    <style>
+        /* --- STYLE GÉNÉRAL (Ambiance Industrielle Dark) --- */
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* --- HEADER & STATS --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        h1 { margin: 0; font-size: 24px; color: #00bcd4; text-transform: uppercase; letter-spacing: 2px; }
+        .stats-box {
+            display: flex;
+            gap: 20px;
+        }
+        .stat-item {
+            background: #1e1e1e;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-align: center;
+            border: 1px solid #333;
+        }
+        .stat-value { font-size: 20px; font-weight: bold; color: #fff; }
+        .stat-label { font-size: 12px; color: #888; text-transform: uppercase; }
+
+        /* --- PANNEAU DE CONTRÔLE --- */
+        .control-panel {
+            display: flex;
+            gap: 20px;
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            align-items: center;
+            border-left: 5px solid #00bcd4;
+            flex-wrap: wrap; /* Pour s'adapter aux petits écrans */
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding-right: 20px;
+            border-right: 1px solid #333;
+        }
+        .control-group:last-child { border-right: none; }
+        .control-group small { color: #888; font-weight: bold; font-size: 10px; text-transform: uppercase; }
+
+        button {
+            cursor: pointer;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: 0.2s;
+            font-size: 14px;
+        }
+        
+        /* Boutons Spécifiques */
+        .btn-spawn { background-color: #4caf50; color: white; }
+        .btn-spawn:hover { background-color: #45a049; }
+        
+        .btn-kill { background-color: #f44336; color: white; }
+        .btn-kill:hover { background-color: #d32f2f; }
+        
+        .btn-update { background-color: #2196f3; color: white; }
+        .btn-update:hover { background-color: #1976d2; }
+
+        .btn-weather { font-size: 16px; min-width: 40px; }
+
+        input[type="number"] {
+            background: #333; border: 1px solid #555; color: white; padding: 5px; width: 60px; border-radius: 3px;
+        }
+
+        /* --- GRILLE DES ONDULEURS --- */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 15px;
+            flex-grow: 1; /* Prend toute la place restante */
+            overflow-y: auto; /* Scroll si trop d'onduleurs */
+            padding-right: 5px;
+        }
+
+        .card {
+            background: #252525;
+            border: 2px solid #444;
+            border-radius: 6px;
+            padding: 15px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        /* Indicateurs d'état (Couleurs) */
+        .status-NORMAL { border-color: #4caf50; box-shadow: 0 0 5px rgba(76, 175, 80, 0.2); }
+        .status-NORMAL h3 { color: #4caf50; }
+
+        .status-SATURATION { 
+            border-color: #ffeb3b; 
+            box-shadow: 0 0 10px rgba(255, 235, 59, 0.4); 
+        }
+        .status-SATURATION h3 { color: #ffeb3b; }
+
+        .status-WARNING { 
+            border-color: #ff9800; 
+            box-shadow: 0 0 8px rgba(255, 152, 0, 0.4); 
+        }
+        .status-WARNING h3 { color: #ff9800; }
+
+        .status-CRITICAL { 
+            border-color: #f44336; 
+            box-shadow: 0 0 15px rgba(244, 67, 54, 0.6);
+            animation: pulse 1s infinite;
+        }
+        .status-CRITICAL h3 { color: #f44336; }
+        
+        .status-SLEEP { 
+            border-color: #3f51b5; 
+            opacity: 0.6;
+        }
+        .status-SLEEP h3 { color: #7986cb; }
+
+        .status-OFFLINE { border-color: #555; opacity: 0.4; background: #000; }
+        .status-OFFLINE h3 { color: #777; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+
+        .card h3 { margin: 0 0 10px 0; font-size: 16px; }
+        .data-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 3px; }
+        .val { font-family: 'Courier New', monospace; font-weight: bold; }
+
+        /* --- BLACK BOX (LOGS) --- */
+        .log-panel {
+            height: 120px;
+            min-height: 120px;
+            background: #000;
+            border-top: 2px solid #333;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #00ff00;
+            overflow-y: scroll;
+            margin-top: 20px;
+        }
+        .log-entry { margin-bottom: 2px; }
+        .log-time { color: #888; margin-right: 10px; }
+        .log-alert { color: #f44336; font-weight: bold; }
+
+        /* --- IA SWITCH --- */
+        .switch-container { display: flex; align-items: center; gap: 10px; }
+        .switch-label { font-weight: bold; color: #00bcd4; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <h1>⚡ Solar Grid Manager</h1>
+            <span style="background:#333; padding:2px 8px; border-radius:4px; font-size:12px;">v2.1 Phys-Sim</span>
+        </div>
+        
+        <div class="stats-box">
+            <div class="stat-item">
+                <div class="stat-value" id="total-power">0 kW</div>
+                <div class="stat-label">Production Totale</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="active-units">0</div>
+                <div class="stat-label">Unités Actives</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="grid-health" style="color:#4caf50">100%</div>
+                <div class="stat-label">Santé Réseau</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="control-panel">
+        
+        <div class="control-group">
+            <small>CONDITIONS MÉTÉO</small>
+            <div style="display:flex; gap:5px; margin-top:5px;">
+                <button class="btn-weather" onclick="setWeather(1.0)" style="background:#ff9800; color:white;" title="Grand Soleil (100%)">☀️</button>
+                <button class="btn-weather" onclick="setWeather(0.5)" style="background:#607d8b; color:white;" title="Nuageux (50%)">☁️</button>
+                <button class="btn-weather" onclick="setWeather(0.1)" style="background:#263238; color:white;" title="Nuit/Orage (10%)">🌙</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <small>GESTION FLOTTE</small>
+            <div style="display:flex; gap:5px; margin-top:5px;">
+                <button class="btn-spawn" onclick="spawnInverters(5)">+5</button>
+                <button class="btn-spawn" onclick="spawnInverters(1)">+1</button>
+                <button class="btn-kill" onclick="killAll()">STOP</button>
+            </div>
+        </div>
+
+        <div class="control-group" style="flex-grow:1;">
+            <small>CONSIGNES RÉSEAU (LIMITES)</small>
+            <div style="display:flex; gap:15px; align-items:center; margin-top:5px;">
+                <div>
+                    <label>Max W:</label>
+                    <input type="number" id="limit-w" value="4000">
+                </div>
+                <div>
+                    <label>Max V:</label>
+                    <input type="number" id="limit-v" value="250">
+                </div>
+                <button class="btn-update" onclick="updateLimits()">APPLIQUER</button>
+            </div>
+        </div>
+
+        <div class="control-group" style="border:none;">
+            <div class="switch-container">
+                <div class="switch-label">🛡️ AI DEFENSE</div>
+                <input type="checkbox" id="ai-toggle" disabled title="Module non chargé">
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-container" id="grid">
+        </div>
+
+    <div class="log-panel" id="logs">
+        <div class="log-entry"><span class="log-time">SYSTEM</span>Initialisation du Dashboard... Prêt.</div>
+    </div>
+
+    <script>
+        // Fonction utilitaire pour logger
+        function log(msg, type="info") {
+            const panel = document.getElementById('logs');
+            const now = new Date().toLocaleTimeString();
+            let colorClass = "";
+            if(type === "alert") colorClass = "log-alert";
+            
+            panel.innerHTML += `<div class="log-entry ${colorClass}"><span class="log-time">[${now}]</span>${msg}</div>`;
+            panel.scrollTop = panel.scrollHeight; // Auto-scroll vers le bas
+        }
+
+        // --- COMMANDES API ---
+
+        function setWeather(factor) {
+            let msg = "Grand Soleil";
+            if(factor === 0.5) msg = "Passage Nuageux";
+            if(factor <= 0.2) msg = "Nuit / Tempête";
+
+            fetch('/api/weather/set', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({factor: factor})
+            })
+            .then(res => res.json())
+            .then(data => log(`Météo changée : ${msg} (Facteur ${data.current_factor})`));
+        }
+
+        function spawnInverters(count) {
+            fetch('/api/control/spawn', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({count: count})
+            })
+            .then(res => res.json())
+            .then(data => log(`Commande envoyée : ${data.msg}`));
+        }
+
+        function killAll() {
+            fetch('/api/control/kill', {method: 'POST'})
+            .then(res => res.json())
+            .then(data => {
+                log(`🛑 ${data.msg}`, "alert");
+                document.getElementById('grid').innerHTML = ''; // Vide la grille
+            });
+        }
+
+        function updateLimits() {
+            const w = document.getElementById('limit-w').value;
+            const v = document.getElementById('limit-v').value;
+            
+            fetch('/api/settings/update', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({limit_w: w, limit_v: v})
+            })
+            .then(res => res.json())
+            .then(data => log(`⚙️ Nouvelles consignes : Max ${data.current.w}W / ${data.current.v}V`));
+        }
+
+        // --- BOUCLE DE MISE À JOUR (Toutes les 1s) ---
+
+        function updateDashboard() {
+            fetch('/api/data')
+            .then(res => res.json())
+            .then(data => {
+                const grid = document.getElementById('grid');
+                const inverters = data.inverters;
+                
+                // Calculs stats
+                let totalPower = 0;
+                let activeCount = 0;
+                let criticalCount = 0;
+
+                // On vide la grille pour redessiner
+                grid.innerHTML = '';
+
+                // Pour chaque onduleur
+                for (const [id, info] of Object.entries(inverters)) {
+                    activeCount++;
+                    totalPower += info.power;
+                    if(info.status === 'CRITICAL' || info.status === 'OFFLINE') criticalCount++;
+
+                    // Création de la carte HTML
+                    const card = document.createElement('div');
+                    card.className = `card status-${info.status}`;
+                    
+                    // Contenu de la carte
+                    card.innerHTML = `
+                        <h3>${id}</h3>
+                        <div class="data-row"><span>État:</span> <b>${info.status}</b></div>
+                        <div class="data-row"><span>Puissance:</span> <span class="val">${info.power} W</span></div>
+                        <div class="data-row"><span>Tension:</span> <span class="val">${info.voltage} V</span></div>
+                        <div class="data-row" style="color:#888; margin-top:5px; font-size:11px;">Limit: ${info.config_limit_w}W</div>
+                    `;
+                    grid.appendChild(card);
+                }
+
+                // Mise à jour des stats globales
+                document.getElementById('total-power').innerText = (totalPower / 1000).toFixed(1) + " kW";
+                document.getElementById('active-units').innerText = activeCount;
+                
+                // Calcul santé réseau
+                if (activeCount > 0) {
+                    const health = Math.round(((activeCount - criticalCount) / activeCount) * 100);
+                    const healthElem = document.getElementById('grid-health');
+                    healthElem.innerText = health + "%";
+                    
+                    // Couleur dynamique de la santé
+                    if(health < 50) healthElem.style.color = "#f44336"; // Rouge
+                    else if(health < 80) healthElem.style.color = "#ff9800"; // Orange
+                    else healthElem.style.color = "#4caf50"; // Vert
+                } else {
+                    document.getElementById('grid-health').innerText = "N/A";
+                }
+            })
+            .catch(err => console.error("Erreur update:", err));
+        }
+
+        // Lancer la boucle
+        setInterval(updateDashboard, 1000);
+
+    </script>
+</body>
+</html>
